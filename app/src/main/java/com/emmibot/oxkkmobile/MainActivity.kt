@@ -3,7 +3,6 @@ package com.emmibot.oxkkmobile
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.widget.Button
@@ -17,8 +16,6 @@ import java.security.KeyPairGenerator
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.text.SimpleDateFormat
-import java.security.KeyFactory
-import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
 import android.util.Base64
 import java.security.MessageDigest
@@ -27,14 +24,15 @@ import javax.crypto.Cipher
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var hideShowButton: Button
     private lateinit var textView: TextView
     private lateinit var keyInput: EditText
     private lateinit var progressBar: ProgressBar
     private lateinit var copyButton: Button
     private lateinit var copyhashButton: Button
-    private lateinit var lenghtoutput: EditText
     private lateinit var decryptButton: Button
     private lateinit var encryptedInput: EditText
+    private var isPasswordVisible = false
     private var ultKey: String? = null
     private var rsaPublicKey: PublicKey? = null
     private var rsaPrivateKey: PrivateKey? = null
@@ -50,7 +48,6 @@ class MainActivity : AppCompatActivity() {
         textView = findViewById(R.id.textView)
         keyInput = findViewById(R.id.keyInput)
         progressBar = findViewById(R.id.progressBar)
-        lenghtoutput = findViewById(R.id.editTextNumberPassword)
         copyButton = findViewById(R.id.copyButton)
         copyhashButton = findViewById(R.id.copyhashButton)
         decryptButton = findViewById(R.id.decryptButton)
@@ -61,6 +58,23 @@ class MainActivity : AppCompatActivity() {
         copyhashButton.setOnClickListener { copyHashToClipboard() }
         copyButton.setOnClickListener { copyPublicKeyToClipboard() }
         decryptButton.setOnClickListener { decryptText() }
+
+        keyInput = findViewById(R.id.keyInput)
+        hideShowButton = findViewById(R.id.hideShowButton)
+
+        keyInput.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
+
+        hideShowButton.setOnClickListener {
+            isPasswordVisible = !isPasswordVisible
+            if (isPasswordVisible) {
+                keyInput.transformationMethod = null
+                hideShowButton.text = "Скрыть"
+            } else {
+                keyInput.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
+                hideShowButton.text = "Показать"
+            }
+            keyInput.setSelection(keyInput.text.length)
+        }
 
         load()
         startUpdating()
@@ -106,7 +120,7 @@ class MainActivity : AppCompatActivity() {
                 val encryptedBytes = Base64.decode(encryptedTextBase64, Base64.DEFAULT)
                 val decryptedText = decryptRSA(encryptedBytes)
 
-                save(decryptedText, Integer.parseInt(lenghtoutput.text.toString()))
+                save(decryptedText)
 
                 encryptedInput.setText("")
                 keyInput.setText(decryptedText)
@@ -137,22 +151,16 @@ class MainActivity : AppCompatActivity() {
         val utcMinute = calendar.get(Calendar.MINUTE)
         val utcSecond = calendar.get(Calendar.SECOND)
         val key = keyInput.text.toString()
-        var keylenghtstr = lenghtoutput.text.toString()
-
-        var length = 8
-        if (keylenghtstr.isNotBlank()) {
-            length = Integer.parseInt(keylenghtstr)
-        }
 
         if ((utcMinute != currentMinute && utcSecond == 0) || doInstant) {
             currentMinute = utcMinute
             if (key.isNotBlank()) {
                 ultKey = key
-                save(key, length)
-                val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+                save(key)
+                val currentTime = SimpleDateFormat("yyyy.MM.dd_HH:mm", Locale.getDefault())
                     .apply { timeZone = TimeZone.getTimeZone("UTC") }
                     .format(calendar.time)
-                textView.text  = sha256("$currentTime$key").take(length).uppercase()
+                textView.text  = sha256("$currentTime$key").take(12).uppercase()
             } else {
                 Toast.makeText(this, "Введите ключ!", Toast.LENGTH_SHORT).show()
             }
@@ -185,19 +193,16 @@ class MainActivity : AppCompatActivity() {
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
-    private fun save(key: String, lenghtkey: Int) {
+    private fun save(key: String) {
         val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         editor.putString("ULT_KEY", key)
-        editor.putString("KEY_LENGHT", lenghtkey.toString())
         editor.apply()
     }
 
     private fun load() {
         val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
         val savedKey = sharedPreferences.getString("ULT_KEY", null)
-        val savedKeylenght = sharedPreferences.getString("KEY_LENGHT", "8")
-        lenghtoutput.setText(savedKeylenght)
         if (!savedKey.isNullOrEmpty()) {
             keyInput.setText(savedKey)
             Toast.makeText(this, "Ключ загружен", Toast.LENGTH_SHORT).show()
