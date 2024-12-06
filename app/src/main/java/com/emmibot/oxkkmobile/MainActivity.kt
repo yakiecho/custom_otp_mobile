@@ -3,6 +3,7 @@ package com.emmibot.oxkkmobile
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.widget.Button
@@ -11,10 +12,18 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import java.lang.Integer
-import java.security.MessageDigest
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.PrivateKey
+import java.security.PublicKey
 import java.text.SimpleDateFormat
+import java.security.KeyFactory
+import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
+import android.util.Base64
+import java.security.MessageDigest
+import javax.crypto.Cipher
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -22,28 +31,100 @@ class MainActivity : AppCompatActivity() {
     private lateinit var keyInput: EditText
     private lateinit var progressBar: ProgressBar
     private lateinit var copyButton: Button
+    private lateinit var copyhashButton: Button
     private lateinit var lenghtoutput: EditText
+    private lateinit var decryptButton: Button
+    private lateinit var encryptedInput: EditText
     private var ultKey: String? = null
+    private var rsaPublicKey: PublicKey? = null
+    private var rsaPrivateKey: PrivateKey? = null
     private val handler = Handler()
-    private var currentHash: String? = null
     private var currentMinute: Int = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        generateRSAKeys() // Генерация ключей
+
         textView = findViewById(R.id.textView)
         keyInput = findViewById(R.id.keyInput)
         progressBar = findViewById(R.id.progressBar)
         lenghtoutput = findViewById(R.id.editTextNumberPassword)
         copyButton = findViewById(R.id.copyButton)
+        copyhashButton = findViewById(R.id.copyhashButton)
+        decryptButton = findViewById(R.id.decryptButton)
+        encryptedInput = findViewById(R.id.encryptedInput)
 
         keyInput.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance() // Скроем ввод
 
-        copyButton.setOnClickListener { copyHashToClipboard() }
+        copyhashButton.setOnClickListener { copyHashToClipboard() }
+        copyButton.setOnClickListener { copyPublicKeyToClipboard() }
+        decryptButton.setOnClickListener { decryptText() }
 
         load()
         startUpdating()
+    }
+
+    private fun generateRSAKeys() {
+        val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
+        keyPairGenerator.initialize(2048)
+        val keyPair: KeyPair = keyPairGenerator.generateKeyPair()
+        rsaPublicKey = keyPair.public
+        rsaPrivateKey = keyPair.private
+    }
+
+    private fun copyHashToClipboard() {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val hash = textView.text
+        if (hash != null) {
+            val clip = ClipData.newPlainText("Copied Hash", hash)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(this, "Хэш скопирован: $hash", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Хэш ещё не сгенерирован!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun publicKeyToBase64(): String {
+        return Base64.encodeToString(rsaPublicKey?.encoded, Base64.DEFAULT)
+    }
+
+    private fun copyPublicKeyToClipboard() {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val publicKeyBase64 = publicKeyToBase64()
+        val clip = ClipData.newPlainText("Public Key", publicKeyBase64)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, "Открытый ключ скопирован", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun decryptText() {
+        val encryptedTextBase64 = encryptedInput.text.toString()
+
+        if (encryptedTextBase64.isNotBlank()) {
+            try {
+                val encryptedBytes = Base64.decode(encryptedTextBase64, Base64.DEFAULT)
+                val decryptedText = decryptRSA(encryptedBytes)
+
+                save(decryptedText, Integer.parseInt(lenghtoutput.text.toString()))
+
+                encryptedInput.setText("")
+                keyInput.setText(decryptedText)
+
+                Toast.makeText(this, "Ключ успешно сохранён", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Ошибка при расшифровке ключа!", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(this, "Введите зашифрованный текст", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun decryptRSA(encryptedBytes: ByteArray): String {
+        val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+        cipher.init(Cipher.DECRYPT_MODE, rsaPrivateKey)
+        val decryptedBytes = cipher.doFinal(encryptedBytes)
+        return String(decryptedBytes, Charsets.UTF_8)
     }
 
     private fun startUpdating() {
@@ -56,7 +137,12 @@ class MainActivity : AppCompatActivity() {
         val utcMinute = calendar.get(Calendar.MINUTE)
         val utcSecond = calendar.get(Calendar.SECOND)
         val key = keyInput.text.toString()
-        var length = lenghtoutput.text.toString().toIntOrNull() ?: 8
+        var keylenghtstr = lenghtoutput.text.toString()
+
+        var length = 8
+        if (keylenghtstr.isNotBlank()) {
+            length = Integer.parseInt(keylenghtstr)
+        }
 
         if ((utcMinute != currentMinute && utcSecond == 0) || doInstant) {
             currentMinute = utcMinute
@@ -99,18 +185,6 @@ class MainActivity : AppCompatActivity() {
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
-    private fun copyHashToClipboard() {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val hash = currentHash
-        if (hash != null) {
-            val clip = ClipData.newPlainText("Copied Hash", hash)
-            clipboard.setPrimaryClip(clip)
-            Toast.makeText(this, "Хэш скопирован: $hash", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "Хэш ещё не сгенерирован!", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     private fun save(key: String, lenghtkey: Int) {
         val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
@@ -126,10 +200,8 @@ class MainActivity : AppCompatActivity() {
         lenghtoutput.setText(savedKeylenght)
         if (!savedKey.isNullOrEmpty()) {
             keyInput.setText(savedKey)
-            ultKey = savedKey
             Toast.makeText(this, "Ключ загружен", Toast.LENGTH_SHORT).show()
         }
-
     }
 
     override fun onDestroy() {

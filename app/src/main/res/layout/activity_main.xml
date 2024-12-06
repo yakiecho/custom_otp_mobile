@@ -40,21 +40,43 @@
         android:rotation="180" />
 
     <Button
-        android:id="@+id/copyButton"
+        android:id="@+id/copyhashButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/progressBar"
-        android:layout_marginTop="50dp"
-        android:text="Копировать хэш" />
+        android:layout_marginTop="4dp"
+        android:text="Копировать OTP" />
+
+    <Button
+        android:id="@+id/copyButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/editTextNumberPassword"
+        android:layout_marginTop="30dp"
+        android:text="Копировать свой открытый ключ" />
+
+    <Button
+        android:id="@+id/decryptButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/encryptedInput"
+        android:layout_marginTop="0dp"
+        android:text="Расшифровать и сохранить ключ OTP" />
+
+    <EditText
+        android:id="@+id/encryptedInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/copyButton"
+        android:layout_marginTop="0dp"
+        android:hint="Вставьте зашифрованный текст" />
 
     <EditText
         android:id="@+id/editTextNumberPassword"
-        android:layout_width="135dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/progressBar"
-        android:text="8"
-        android:ems="10"
-        android:hint="Размер OTP"
+        android:layout_below="@id/copyhashButton"
+        android:layout_marginTop="3dp"
+        android:hint="Задать длину ключа (по умолчанию 8)"
         android:inputType="number" />
-
 </RelativeLayout>
