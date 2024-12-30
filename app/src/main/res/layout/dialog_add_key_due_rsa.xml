@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Имя сервиса:"
+        android:text="@string/service_name_label"
         android:textSize="16sp"
         android:layout_marginBottom="8dp" />
 
@@ -17,22 +17,21 @@
         android:id="@+id/RSAserviceNameInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Введите имя сервиса"
+        android:hint="@string/service_name_hint"
         android:inputType="text" />
 
     <Button
         android:id="@+id/RSAcopyButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/serviceNameInput"
         android:layout_marginTop="10dp"
-        android:text="Копировать свой открытый ключ"
+        android:text="@string/copy_public_key"
         app:icon="?attr/actionModeCopyDrawable" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Зашифрованный ключ:"
+        android:text="@string/encrypted_key_label"
         android:textSize="16sp"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="8dp" />
@@ -41,15 +40,14 @@
         android:id="@+id/RSAkeyInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Введите полученный ключ"
+        android:hint="@string/encrypted_key_hint"
         android:inputType="text" />
 
     <Button
         android:id="@+id/RSAdecryptButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/keyInput"
         android:layout_marginTop="10dp"
-        android:text="Расшифровать и сохранить ключ OTP"
+        android:text="@string/decrypt_and_save_key"
         app:icon="@android:drawable/ic_lock_idle_lock" />
 </LinearLayout>

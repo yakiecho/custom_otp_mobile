@@ -46,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private var secondsRemaining = 60
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -78,7 +79,7 @@ class MainActivity : AppCompatActivity() {
             override fun run() {
                 if (secondsRemaining > 0) {
                     secondsRemaining--
-                    textView.text = "Осталось $secondsRemaining сек"
+                    textView.text = getString(R.string.remaining_seconds, secondsRemaining)
                     progressBar.progress = 60 - secondsRemaining
                     handler.postDelayed(this, 1000)
                 } else {
@@ -86,7 +87,7 @@ class MainActivity : AppCompatActivity() {
                     val secondsElapsed = calendar.get(Calendar.SECOND)
                     secondsRemaining = 60 - secondsElapsed
 
-                    textView.text = "Осталось 60 сек"
+                    textView.text = getString(R.string.remaining_seconds, 60)
                     progressBar.progress = 0
                     adapter.notifyDataSetChanged()
                     handler.postDelayed(this, 1000)
@@ -96,21 +97,20 @@ class MainActivity : AppCompatActivity() {
         handler.post(progressUpdateRunnable)
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     private fun showAddKeyDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_key, null)
         val serviceNameInput = dialogView.findViewById<EditText>(R.id.serviceNameInput)
         val keyInput = dialogView.findViewById<EditText>(R.id.keyInput)
 
         val alertDialog = AlertDialog.Builder(this)
-            .setTitle("Добавить ключ")
+            .setTitle(getString(R.string.add_key_dialog_title))
             .setView(dialogView)
-            .setPositiveButton("Добавить") { _, _ ->
+            .setPositiveButton(getString(R.string.add)) { _, _ ->
                 val serviceName = serviceNameInput.text.toString().trim()
                 val key = keyInput.text.toString().trim()
 
                 if (TextUtils.isEmpty(serviceName) || TextUtils.isEmpty(key)) {
-                    Toast.makeText(this, "Заполните все поля", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.fill_all_fields), Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
@@ -119,9 +119,9 @@ class MainActivity : AppCompatActivity() {
 
                 saveKeys()
 
-                Toast.makeText(this, "Ключ добавлен", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.key_added), Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("Отмена") { dialog, _ -> dialog.dismiss() }
+            .setNegativeButton(getString(R.string.cancel)) { dialog, _ -> dialog.dismiss() }
             .create()
 
         alertDialog.show()
@@ -138,9 +138,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         val alertDialog = AlertDialog.Builder(this)
-            .setTitle("Добавить ключ")
+            .setTitle(getString(R.string.add_key_dialog_title))
             .setView(dialogView)
-            .setNegativeButton("Отмена") { dialog, _ -> dialog.dismiss() }
+            .setNegativeButton(getString(R.string.cancel)) { dialog, _ -> dialog.dismiss() }
             .create()
 
         RSAdecryptButton.setOnClickListener {
@@ -150,60 +150,42 @@ class MainActivity : AppCompatActivity() {
         alertDialog.show()
     }
 
-
-    private fun generateRSAKeys() {
-        val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
-        keyPairGenerator.initialize(2048)
-        val keyPair: KeyPair = keyPairGenerator.generateKeyPair()
-        rsaPublicKey = keyPair.public
-        rsaPrivateKey = keyPair.private
-    }
-
     private fun copyPublicKeyToClipboard() {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val publicKeyBase64 = Base64.encodeToString(rsaPublicKey?.encoded, Base64.DEFAULT)
         val clip = ClipData.newPlainText("Public Key", publicKeyBase64)
         clipboard.setPrimaryClip(clip)
-        Toast.makeText(this, "Открытый ключ скопирован", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.rsa_key_copied), Toast.LENGTH_SHORT).show()
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     private fun decryptText(dialogView: View, alertDialog: AlertDialog) {
         val encryptedTextBase64 = dialogView.findViewById<EditText>(R.id.RSAkeyInput).text.toString()
         val serviceNameInput = dialogView.findViewById<EditText>(R.id.RSAserviceNameInput).text.toString()
 
         if (TextUtils.isEmpty(serviceNameInput) || TextUtils.isEmpty(encryptedTextBase64)) {
-            Toast.makeText(this, "Заполните все поля", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.fill_all_fields), Toast.LENGTH_SHORT).show()
             alertDialog.dismiss()
-        }
-
-        if (encryptedTextBase64.isNotBlank()) {
-            try {
-                val encryptedBytes = Base64.decode(encryptedTextBase64, Base64.DEFAULT)
-                val decryptedText = decryptRSA(encryptedBytes)
-
-                keysList.add(KeyItem(serviceNameInput, decryptedText))
-                adapter.notifyDataSetChanged()
-
-                saveKeys()
-
-                alertDialog.dismiss()
-
-                Toast.makeText(this, "Ключ успешно сохранён", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(this, "Ошибка при расшифровке ключа!", Toast.LENGTH_SHORT).show()
-            }
         } else {
-            Toast.makeText(this, "Введите зашифрованный текст", Toast.LENGTH_SHORT).show()
+            if (encryptedTextBase64.isNotBlank()) {
+                try {
+                    val encryptedBytes = Base64.decode(encryptedTextBase64, Base64.DEFAULT)
+                    val decryptedText = decryptRSA(encryptedBytes)
+
+                    keysList.add(KeyItem(serviceNameInput, decryptedText))
+                    adapter.notifyDataSetChanged()
+
+                    saveKeys()
+
+                    alertDialog.dismiss()
+
+                    Toast.makeText(this, getString(R.string.key_saved), Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(this, getString(R.string.decrypt_error), Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, getString(R.string.encrypted_text_required), Toast.LENGTH_SHORT).show()
+            }
         }
-    }
-
-
-    private fun decryptRSA(encryptedBytes: ByteArray): String {
-        val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
-        cipher.init(Cipher.DECRYPT_MODE, rsaPrivateKey)
-        val decryptedBytes = cipher.doFinal(encryptedBytes)
-        return String(decryptedBytes, Charsets.UTF_8)
     }
 
     private fun showPopupMenu(view: View) {
@@ -224,6 +206,22 @@ class MainActivity : AppCompatActivity() {
             }
         }
         popupMenu.show()
+    }
+
+
+    private fun generateRSAKeys() {
+        val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
+        keyPairGenerator.initialize(2048)
+        val keyPair: KeyPair = keyPairGenerator.generateKeyPair()
+        rsaPublicKey = keyPair.public
+        rsaPrivateKey = keyPair.private
+    }
+
+    private fun decryptRSA(encryptedBytes: ByteArray): String {
+        val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+        cipher.init(Cipher.DECRYPT_MODE, rsaPrivateKey)
+        val decryptedBytes = cipher.doFinal(encryptedBytes)
+        return String(decryptedBytes, Charsets.UTF_8)
     }
 
     fun saveKeys() {

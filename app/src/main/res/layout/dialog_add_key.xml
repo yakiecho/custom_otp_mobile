@@ -8,7 +8,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Имя сервиса:"
+        android:text="@string/service_name_label"
         android:textSize="16sp"
         android:layout_marginBottom="8dp" />
 
@@ -16,13 +16,13 @@
         android:id="@+id/serviceNameInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Введите имя сервиса"
+        android:hint="@string/service_name_hint"
         android:inputType="text" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Ключ:"
+        android:text="@string/key_label"
         android:textSize="16sp"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="8dp" />
@@ -31,6 +31,6 @@
         android:id="@+id/keyInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Введите ключ"
+        android:hint="@string/key_hint"
         android:inputType="text" />
 </LinearLayout>

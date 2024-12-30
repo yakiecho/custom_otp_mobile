@@ -1,5 +1,6 @@
 package com.emmibot.oxkkmobile
 
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -50,25 +51,27 @@ class KeysAdapter(
         val item = keysList[position]
         val otp = getcurrentOTP(item.key)
 
+        val formattedOtp = otp.chunked(4).joinToString(" ")
+
         holder.bind(otp)
         holder.serviceName.text = item.serviceName
-        holder.keyCode.text = otp
+        holder.keyCode.text = formattedOtp
 
         holder.deleteKey.setOnClickListener {
             val removedKey = keysList[position]
 
             // Создаем диалог подтверждения
             AlertDialog.Builder(holder.itemView.context)
-                .setTitle("Подтверждение удаления")
-                .setMessage("Вы действительно хотите удалить этот ключ?")
-                .setPositiveButton("Да") { _, _ ->
+                .setTitle(R.string.confirm_delete_title)
+                .setMessage(R.string.confirm_delete_message)
+                .setPositiveButton(R.string.yes) { _, _ ->
                     keysList.removeAt(position)
                     onKeyDeleted(removedKey)
                     notifyItemRemoved(position)
                     notifyItemRangeChanged(position, keysList.size)
                     (holder.itemView.context as MainActivity).saveKeys()
                 }
-                .setNegativeButton("Нет") { dialog, _ ->
+                .setNegativeButton(R.string.no) { dialog, _ ->
                     dialog.dismiss()
                 }
                 .create()
