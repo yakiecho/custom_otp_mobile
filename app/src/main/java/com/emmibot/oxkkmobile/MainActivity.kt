@@ -1,84 +1,155 @@
 package com.emmibot.oxkkmobile
 
-import android.content.ClipData
-import android.content.ClipboardManager
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
 import android.os.Handler
-import android.widget.Button
+import android.text.TextUtils
+import android.view.LayoutInflater
+import android.view.View
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.PopupMenu
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.PrivateKey
 import java.security.PublicKey
-import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.ArrayList
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.util.Base64
-import java.security.MessageDigest
+import android.widget.Button
 import javax.crypto.Cipher
 
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var hideShowButton: Button
-    private lateinit var textView: TextView
-    private lateinit var keyInput: EditText
-    private lateinit var progressBar: ProgressBar
-    private lateinit var copyButton: Button
-    private lateinit var copyhashButton: Button
-    private lateinit var decryptButton: Button
-    private lateinit var encryptedInput: EditText
-    private var isPasswordVisible = false
-    private var ultKey: String? = null
     private var rsaPublicKey: PublicKey? = null
     private var rsaPrivateKey: PrivateKey? = null
+    private lateinit var textView: TextView
+    private lateinit var progressBar: ProgressBar
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var addButton: FloatingActionButton
+    private lateinit var adapter: KeysAdapter
+
+    private val keysList = ArrayList<KeyItem>()
     private val handler = Handler()
-    private var currentMinute: Int = -1
+
+    private var secondsRemaining = 60
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        generateRSAKeys() // Генерация ключей
-
         textView = findViewById(R.id.textView)
-        keyInput = findViewById(R.id.keyInput)
         progressBar = findViewById(R.id.progressBar)
-        copyButton = findViewById(R.id.copyButton)
-        copyhashButton = findViewById(R.id.copyhashButton)
-        decryptButton = findViewById(R.id.decryptButton)
-        encryptedInput = findViewById(R.id.encryptedInput)
+        recyclerView = findViewById(R.id.recyclerView)
+        addButton = findViewById(R.id.addButton)
 
-        keyInput.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance() // Скроем ввод
+        adapter = KeysAdapter(keysList) {}
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = adapter
 
-        copyhashButton.setOnClickListener { copyHashToClipboard() }
-        copyButton.setOnClickListener { copyPublicKeyToClipboard() }
-        decryptButton.setOnClickListener { decryptText() }
+        loadKeys()
+        generateRSAKeys()
 
-        keyInput = findViewById(R.id.keyInput)
-        hideShowButton = findViewById(R.id.hideShowButton)
-
-        keyInput.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
-
-        hideShowButton.setOnClickListener {
-            isPasswordVisible = !isPasswordVisible
-            if (isPasswordVisible) {
-                keyInput.transformationMethod = null
-                hideShowButton.text = "Скрыть"
-            } else {
-                keyInput.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
-                hideShowButton.text = "Показать"
-            }
-            keyInput.setSelection(keyInput.text.length)
+        addButton.setOnClickListener {
+            showPopupMenu(it)
         }
 
-        load()
-        startUpdating()
+        startProgressBar()
     }
+
+    private fun startProgressBar() {
+        progressBar.max = 60
+        val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+        val secondsElapsed = calendar.get(Calendar.SECOND)
+        secondsRemaining = 60 - secondsElapsed // Начинаем с оставшихся секунд до конца текущей минуты
+
+        val progressUpdateRunnable = object : Runnable {
+            override fun run() {
+                if (secondsRemaining > 0) {
+                    secondsRemaining--
+                    textView.text = "Осталось $secondsRemaining сек"
+                    progressBar.progress = 60 - secondsRemaining
+                    handler.postDelayed(this, 1000)
+                } else {
+                    val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+                    val secondsElapsed = calendar.get(Calendar.SECOND)
+                    secondsRemaining = 60 - secondsElapsed
+
+                    textView.text = "Осталось 60 сек"
+                    progressBar.progress = 0
+                    adapter.notifyDataSetChanged()
+                    handler.postDelayed(this, 1000)
+                }
+            }
+        }
+        handler.post(progressUpdateRunnable)
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private fun showAddKeyDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_key, null)
+        val serviceNameInput = dialogView.findViewById<EditText>(R.id.serviceNameInput)
+        val keyInput = dialogView.findViewById<EditText>(R.id.keyInput)
+
+        val alertDialog = AlertDialog.Builder(this)
+            .setTitle("Добавить ключ")
+            .setView(dialogView)
+            .setPositiveButton("Добавить") { _, _ ->
+                val serviceName = serviceNameInput.text.toString().trim()
+                val key = keyInput.text.toString().trim()
+
+                if (TextUtils.isEmpty(serviceName) || TextUtils.isEmpty(key)) {
+                    Toast.makeText(this, "Заполните все поля", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                keysList.add(KeyItem(serviceName, key))
+                adapter.notifyDataSetChanged()
+
+                saveKeys()
+
+                Toast.makeText(this, "Ключ добавлен", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Отмена") { dialog, _ -> dialog.dismiss() }
+            .create()
+
+        alertDialog.show()
+    }
+
+    private fun showAddKeyRSA() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_key_due_rsa, null)
+
+        val RSAcopyButton = dialogView.findViewById<Button>(R.id.RSAcopyButton)
+        val RSAdecryptButton = dialogView.findViewById<Button>(R.id.RSAdecryptButton)
+
+        RSAcopyButton.setOnClickListener {
+            copyPublicKeyToClipboard()
+        }
+
+        val alertDialog = AlertDialog.Builder(this)
+            .setTitle("Добавить ключ")
+            .setView(dialogView)
+            .setNegativeButton("Отмена") { dialog, _ -> dialog.dismiss() }
+            .create()
+
+        RSAdecryptButton.setOnClickListener {
+            decryptText(dialogView, alertDialog)
+        }
+
+        alertDialog.show()
+    }
+
 
     private fun generateRSAKeys() {
         val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
@@ -88,42 +159,35 @@ class MainActivity : AppCompatActivity() {
         rsaPrivateKey = keyPair.private
     }
 
-    private fun copyHashToClipboard() {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val hash = textView.text
-        if (hash != null) {
-            val clip = ClipData.newPlainText("Copied Hash", hash)
-            clipboard.setPrimaryClip(clip)
-            Toast.makeText(this, "Хэш скопирован: $hash", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "Хэш ещё не сгенерирован!", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun publicKeyToBase64(): String {
-        return Base64.encodeToString(rsaPublicKey?.encoded, Base64.DEFAULT)
-    }
-
     private fun copyPublicKeyToClipboard() {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val publicKeyBase64 = publicKeyToBase64()
+        val publicKeyBase64 = Base64.encodeToString(rsaPublicKey?.encoded, Base64.DEFAULT)
         val clip = ClipData.newPlainText("Public Key", publicKeyBase64)
         clipboard.setPrimaryClip(clip)
         Toast.makeText(this, "Открытый ключ скопирован", Toast.LENGTH_SHORT).show()
     }
 
-    private fun decryptText() {
-        val encryptedTextBase64 = encryptedInput.text.toString()
+    @SuppressLint("NotifyDataSetChanged")
+    private fun decryptText(dialogView: View, alertDialog: AlertDialog) {
+        val encryptedTextBase64 = dialogView.findViewById<EditText>(R.id.RSAkeyInput).text.toString()
+        val serviceNameInput = dialogView.findViewById<EditText>(R.id.RSAserviceNameInput).text.toString()
+
+        if (TextUtils.isEmpty(serviceNameInput) || TextUtils.isEmpty(encryptedTextBase64)) {
+            Toast.makeText(this, "Заполните все поля", Toast.LENGTH_SHORT).show()
+            alertDialog.dismiss()
+        }
 
         if (encryptedTextBase64.isNotBlank()) {
             try {
                 val encryptedBytes = Base64.decode(encryptedTextBase64, Base64.DEFAULT)
                 val decryptedText = decryptRSA(encryptedBytes)
 
-                save(decryptedText)
+                keysList.add(KeyItem(serviceNameInput, decryptedText))
+                adapter.notifyDataSetChanged()
 
-                encryptedInput.setText("")
-                keyInput.setText(decryptedText)
+                saveKeys()
+
+                alertDialog.dismiss()
 
                 Toast.makeText(this, "Ключ успешно сохранён", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
@@ -134,6 +198,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     private fun decryptRSA(encryptedBytes: ByteArray): String {
         val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
         cipher.init(Cipher.DECRYPT_MODE, rsaPrivateKey)
@@ -141,73 +206,49 @@ class MainActivity : AppCompatActivity() {
         return String(decryptedBytes, Charsets.UTF_8)
     }
 
-    private fun startUpdating() {
-        updateText(true)
-        startProgressBar()
-    }
+    private fun showPopupMenu(view: View) {
+        val popupMenu = PopupMenu(this, view)
+        popupMenu.menuInflater.inflate(R.menu.popup_menu, popupMenu.menu)
 
-    private fun updateText(doInstant: Boolean) {
-        val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-        val utcMinute = calendar.get(Calendar.MINUTE)
-        val utcSecond = calendar.get(Calendar.SECOND)
-        val key = keyInput.text.toString()
-
-        if ((utcMinute != currentMinute && utcSecond == 0) || doInstant) {
-            currentMinute = utcMinute
-            if (key.isNotBlank()) {
-                ultKey = key
-                save(key)
-                val currentTime = SimpleDateFormat("yyyy.MM.dd_HH:mm", Locale.getDefault())
-                    .apply { timeZone = TimeZone.getTimeZone("UTC") }
-                    .format(calendar.time)
-                textView.text  = sha256("$currentTime$key").take(12).uppercase()
-            } else {
-                Toast.makeText(this, "Введите ключ!", Toast.LENGTH_SHORT).show()
+        popupMenu.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.add_key -> {
+                    showAddKeyDialog()
+                    true
+                }
+                R.id.add_key_rsa -> {
+                    showAddKeyRSA()
+                    true
+                }
+                else -> false
             }
         }
-        scheduleNextUpdate()
+        popupMenu.show()
     }
 
-    private fun scheduleNextUpdate() {
-        handler.postDelayed({
-            updateText(false)
-        }, 1000) // Запуск обновления каждую секунду
-    }
-
-    private fun startProgressBar() {
-        progressBar.max = 60
-        val progressUpdateRunnable = object : Runnable {
-            override fun run() {
-                val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-                val secondsElapsed = calendar.get(Calendar.SECOND)
-                progressBar.progress = secondsElapsed
-
-                handler.postDelayed(this, 1000)
-            }
-        }
-        handler.post(progressUpdateRunnable)
-    }
-
-    private fun sha256(input: String): String {
-        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
-        return bytes.joinToString("") { "%02x".format(it) }
-    }
-
-    private fun save(key: String) {
+    fun saveKeys() {
         val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
-        editor.putString("ULT_KEY", key)
+        val keysSet = keysList.map { "${it.serviceName}::${it.key}" }.toSet()
+        editor.putStringSet("SAVED_KEYS", keysSet)
         editor.apply()
     }
 
-    private fun load() {
+    private fun loadKeys() {
         val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        val savedKey = sharedPreferences.getString("ULT_KEY", null)
-        if (!savedKey.isNullOrEmpty()) {
-            keyInput.setText(savedKey)
-            Toast.makeText(this, "Ключ загружен", Toast.LENGTH_SHORT).show()
+        val savedKeys = sharedPreferences.getStringSet("SAVED_KEYS", emptySet())
+        keysList.clear()
+
+        savedKeys?.forEach { savedKey ->
+            val parts = savedKey.split("::")
+            if (parts.size == 2) {
+                keysList.add(KeyItem(parts[0], parts[1]))
+            }
         }
+
+        adapter.notifyDataSetChanged()
     }
+
 
     override fun onDestroy() {
         super.onDestroy()

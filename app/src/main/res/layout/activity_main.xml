@@ -3,43 +3,29 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:id="@+id/activity_main"
+    xmlns:tools="http://schemas.android.com/tools"
     android:padding="16dp">
 
-    <EditText
-        android:id="@+id/keyInput"
-        android:layout_width="0dp"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_toStartOf="@id/hideShowButton"
-        android:layout_alignParentStart="true"
-        android:layout_marginEnd="8dp"
-        android:layout_weight="1"
-        android:hint="Введите ключ"
-        android:inputType="textPassword" />
-
-    <Button
-        android:id="@+id/hideShowButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignTop="@id/keyInput"
-        android:layout_alignBottom="@id/keyInput"
-        android:layout_alignParentEnd="true"
-        android:layout_marginStart="8dp"
-        android:text="Показать"
-        app:icon="@android:drawable/ic_menu_view"
-        app:iconPadding="0dp"
-        app:iconSize="25dp"
-        app:iconTintMode="multiply" />
+        android:layout_below="@id/progressBar"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="0dp"
+        android:scrollbars="vertical"
+        tools:listitem="@layout/item_key" />
 
     <TextView
         android:id="@+id/textView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/keyInput"
-        android:layout_marginTop="16dp"
-        android:text="Загрузка..."
+        android:layout_marginTop="0dp"
+        android:layout_alignParentTop="true"
+        android:text="Следующий ключ через..."
         android:textSize="25sp"
         android:textAlignment="center"
-        android:letterSpacing="0.35"
         android:visibility="visible" />
 
     <ProgressBar
@@ -47,51 +33,28 @@
         style="@android:style/Widget.ProgressBar.Horizontal"
         android:layout_width="379dp"
         android:layout_height="38dp"
+        android:layout_alignParentTop="true"
         android:layout_below="@id/textView"
-        android:layout_marginTop="-33dp"
+        android:layout_marginTop="0dp"
         android:alpha="0.5"
         android:indeterminateBehavior="repeat"
         android:max="60"
         android:progress="30"
-        android:progressBackgroundTint="#7055FF00"
+        android:progressBackgroundTint="#B357FF00"
         android:progressDrawable="@android:drawable/progress_horizontal"
-        android:progressTint="#70FF0000"
+        android:progressTint="#B3FF0000"
         android:progressTintMode="multiply"
         android:rotation="180" />
 
-    <Button
-        android:id="@+id/copyhashButton"
-        android:layout_width="match_parent"
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/addButton"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/progressBar"
-        android:layout_marginTop="5dp"
-        android:text="Копировать OTP"
-        app:icon="?attr/actionModeCopyDrawable" />
-
-    <Button
-        android:id="@+id/copyButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/copyhashButton"
-        android:layout_marginTop="40dp"
-        android:text="Копировать свой открытый ключ"
-        app:icon="?attr/actionModeCopyDrawable" />
-
-    <Button
-        android:id="@+id/decryptButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/encryptedInput"
-        android:layout_marginTop="5dp"
-        android:text="Расшифровать и сохранить ключ OTP"
-        app:icon="@android:drawable/ic_lock_idle_lock" />
-
-    <EditText
-        android:id="@+id/encryptedInput"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/copyButton"
-        android:layout_marginTop="5dp"
-        android:hint="Вставьте зашифрованный текст" />
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="16dp"
+        android:contentDescription="Add key"
+        android:src="@android:drawable/ic_input_add"
+        android:tint="@color/white" />
 
 </RelativeLayout>
