@@ -7,7 +7,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/icon"
-        android:label="EmmiBot OTP"
+        android:label="Custom OTP by yakiecho"
         android:supportsRtl="true"
         android:theme="@style/Theme.Oxkkmobile"
         tools:targetApi="31">
